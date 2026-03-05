@@ -47,7 +47,7 @@ HOME_LON = 81.521722
 
 FLIGHT_ALT = 10
 HOVER_TIMEOUT = 30
-ARRIVAL_THRESHOLD = 5
+ARRIVAL_THRESHOLD = 7
 
 LOCATION_MAP = {
     "Shiva, , Shiva, Shiva - 555555": (16.565946, 81.521744),
@@ -133,24 +133,51 @@ def goto_location(lat, lon):
 
 def return_to_home():
 
-    print("Returning home...")
-    mission_ref.update({
-                "drone_status": "returning_home"
-            })
-    vehicle.mode = VehicleMode("GUIDED")
-    time.sleep(2)
+    print("Returning to HOME coordinates...", flush=True)
 
-    if vehicle.location.global_relative_frame.alt < 2:
+    mission_ref.update({
+        "drone_status": "returning_home"
+    })
+
+    # If drone already landed at delivery point
+    if vehicle.location.global_relative_frame.alt < 1:
+
+        print("Taking off for return mission...", flush=True)
         arm_and_takeoff(FLIGHT_ALT)
 
-    goto_location(HOME_LAT, HOME_LON)
+    # Fly to HOME coordinates defined in code
+    home_location = LocationGlobalRelative(HOME_LAT, HOME_LON, FLIGHT_ALT)
+
+    print("Flying to HOME:", HOME_LAT, HOME_LON, flush=True)
+
+    vehicle.simple_goto(home_location)
+
+    while True:
+
+        current = (
+            vehicle.location.global_relative_frame.lat,
+            vehicle.location.global_relative_frame.lon
+        )
+
+        distance = get_distance(current, (HOME_LAT, HOME_LON))
+
+        print("Distance to HOME:", distance, flush=True)
+
+        if distance <= ARRIVAL_THRESHOLD:
+            print("Arrived at HOME", flush=True)
+            break
+
+        time.sleep(1)
+
+    print("Landing at HOME", flush=True)
 
     vehicle.mode = VehicleMode("LAND")
 
     while vehicle.location.global_relative_frame.alt > 0.2:
         time.sleep(1)
 
-    print("Landed at home")
+    print("Drone landed at HOME successfully", flush=True)
+    
 # =====================================================
 # MAIN
 # =====================================================

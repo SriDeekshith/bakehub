@@ -4,6 +4,7 @@ from firebase_admin import credentials, db
 import geopy.distance
 import time
 import argparse
+import RPi.GPIO as GPIO
 
 # =====================================================
 # FIREBASE SETUP
@@ -39,6 +40,12 @@ def connectMyCopter():
 vehicle = connectMyCopter()
 
 # =====================================================
+# DRONE SPEED CONFIG
+# =====================================================
+
+#vehicle.airspeed = 6   # meters per second
+
+# =====================================================
 # CONFIG
 # =====================================================
 
@@ -54,6 +61,27 @@ LOCATION_MAP = {
     "BOYS": (16.566500, 81.522200),
     "GIRLS": (16.567000, 81.523000)
 }
+
+# =====================================================
+# SERVO SETUP
+# =====================================================
+
+SERVO_PIN = 18   # GPIO pin where servo signal wire is connected
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(SERVO_PIN, GPIO.OUT)
+
+servo = GPIO.PWM(SERVO_PIN, 50)   # 50Hz PWM
+servo.start(0)
+
+def rotate_servo_90():
+    print("Rotating servo 90 degrees...", flush=True)
+
+    duty = 7.5   # 90 degree position
+    servo.ChangeDutyCycle(duty)
+    time.sleep(1)
+
+    servo.ChangeDutyCycle(0)
 
 # =====================================================
 # DISTANCE
@@ -304,10 +332,13 @@ try:
 
                 print("Delivery completed", flush=True)
 
-                mission_ref.update({
+                time.sleep(2) 
                 
-                "return_permission": "Activate"
-            })
+                rotate_servo_90()
+
+                mission_ref.update({
+                    "return_permission": "Activate"
+                })
                 start = time.time()
 
                 while True:
@@ -348,3 +379,10 @@ try:
 except Exception as e:
 
     print("Error:", e, flush=True)
+
+finally:
+
+    print("Cleaning up GPIO...", flush=True)
+
+    servo.stop()
+    GPIO.cleanup()
